@@ -256,3 +256,63 @@ class DashboardAggregates(BaseModel):
     recent_meetings: list[MeetingResponse]
     action_items: list[ActionItemResponse]
     recent_activity: list[ActivityItem]
+
+
+# Upload / Processing
+class UploadResponse(BaseModel):
+    meeting_id: str
+    job_id: str
+    filename: str
+    size_bytes: int
+    status: str
+    message: str
+
+
+class ProcessingJobResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    meeting_id: str
+    organization_id: str
+    stage: str
+    status: str
+    attempts: int
+    max_attempts: int
+    error_code: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# Search
+class SearchHit(BaseModel):
+    meeting_id: str
+    meeting_title: str
+    content_type: str  # transcript | summary | decision | action_item
+    text: str
+    score: float
+    metadata: dict = {}
+
+
+class SearchResponse(BaseModel):
+    query: str
+    hits: list[SearchHit]
+    total: int
+
+
+# Agenda
+class AgendaItem(BaseModel):
+    order: int
+    title: str
+    rationale: str
+    source_type: str  # action_item | decision | open_question | overview
+    source_id: str | None = None
+    duration_minutes: int = 10
+
+
+class AgendaResponse(BaseModel):
+    meeting_id: str
+    meeting_title: str
+    generated_at: datetime
+    items: list[AgendaItem]
+    notes: str = ""

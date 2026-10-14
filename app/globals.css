@@ -250,3 +250,166 @@ button, input { font: inherit; } button { cursor: pointer; }
 @media (max-width: 900px) { .meeting-grid { grid-template-columns: 1fr 1fr; }.table-head,.task-row { grid-template-columns: minmax(180px, 2fr) 1fr 1fr; }.table-head span:nth-child(3),.task-row > span:nth-last-child(2) { display: none; } }
 @media (max-width: 760px) { .top-search-trigger { min-width: 34px; padding: 8px; }.top-search-trigger span,.top-search-trigger kbd { display: none; }.view-heading { align-items: flex-start; flex-direction: column; gap: 20px; }.view-heading h1 { font-size: 42px; }.meeting-grid { grid-template-columns: 1fr; }.meeting-card { min-height: 205px; }.feature-empty { padding: 42px 20px; }.feature-stats { flex-direction: column; gap: 15px; }.table-head { display: none; }.task-row { grid-template-columns: 22px 1fr; gap: 5px 10px; padding: 16px; }.task-row > .task-check + div { grid-column: 2; padding-left: 0; margin-top: 0; }.task-row > span { grid-column: 2; }.detail-grid { grid-template-columns: 1fr; }.detail-grid div:last-child { grid-column: auto; }.lifecycle { flex-wrap: wrap; }.lifecycle span { flex-basis: calc(50% - 4px); }.search-layer { padding-top: 72px; }.search-results { max-height: calc(100vh - 150px); } }
 @media (prefers-reduced-motion: reduce) { .meeting-card:hover { transform: none; } .project-row,.meeting-card,.top-search-trigger { transition: none; } }
+
+/* ── Meeting detail page additions ─────────────────────────────────────── */
+
+.upload-panel {
+  margin-bottom: 1.5rem;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  margin: 1rem 0;
+  background: var(--surface);
+  transition: border-color 0.2s;
+}
+
+.upload-dropzone:hover {
+  border-color: var(--primary);
+}
+
+.upload-file-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--foreground);
+}
+
+.upload-file-info small {
+  color: var(--muted);
+}
+
+.pipeline-progress {
+  margin-top: 1.25rem;
+}
+
+.pipeline-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.stage-icon {
+  display: flex;
+  align-items: center;
+  width: 1.25rem;
+}
+
+.stage-done { color: var(--success); }
+.stage-active { color: var(--primary); font-weight: 600; }
+.stage-failed { color: var(--danger); font-weight: 600; }
+.stage-pending { color: var(--muted-foreground); }
+
+.success-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--success);
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+.transcript-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.transcript-segment {
+  padding: 0.75rem;
+  background: var(--surface);
+  border-radius: 0.625rem;
+  border-left: 3px solid var(--border);
+}
+
+.transcript-segment:hover {
+  border-left-color: var(--primary);
+}
+
+.transcript-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.375rem;
+}
+
+.transcript-meta strong {
+  font-size: 0.8125rem;
+  color: var(--primary);
+}
+
+.transcript-meta small {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.transcript-segment p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--foreground);
+}
+
+.dialog-section {
+  margin-top: 1rem;
+}
+
+.dialog-section ul {
+  margin: 0.375rem 0 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.875rem;
+  padding: 0.25rem 0;
+  transition: color 0.15s;
+}
+
+.text-button:hover { color: var(--foreground); }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-grid .eyebrow {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+}

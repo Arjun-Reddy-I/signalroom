@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  # ── FastAPI backend ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite+aiosqlite:///./signalroom.db
+      - SECRET_KEY=${SECRET_KEY:-signalroom-dev-secret-change-me}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - CORS_ORIGINS_STR=http://localhost:3000
+      - STT_PROVIDER=${STT_PROVIDER:-fallback}
+      - LLM_PROVIDER=${LLM_PROVIDER:-fallback}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-fallback}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - api_db:/app/signalroom.db
+      - api_uploads:/app/storage/uploads
+      - api_chroma:/app/chroma_db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - chromadb
+
+  # ── Background worker ────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: python -m app.worker.pipeline
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite+aiosqlite:///./signalroom.db
+      - SECRET_KEY=${SECRET_KEY:-signalroom-dev-secret-change-me}
+      - STT_PROVIDER=${STT_PROVIDER:-fallback}
+      - LLM_PROVIDER=${LLM_PROVIDER:-fallback}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+    volumes:
+      - api_db:/app/signalroom.db
+      - api_uploads:/app/storage/uploads
+      - api_chroma:/app/chroma_db
+    depends_on:
+      - api
+
+  # ── ChromaDB vector store ─────────────────────────────────────────────────
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=False
+
+  # ── Next.js frontend ──────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://api:8000/api/v1
+    depends_on:
+      - api
+
+volumes:
+  api_db:
+  api_uploads:
+  api_chroma:
+  chroma_data:

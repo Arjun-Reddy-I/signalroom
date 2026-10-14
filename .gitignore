@@ -26,6 +26,8 @@ venv/
 *.db
 *.sqlite3
 signalroom.db
+apps/api/chroma_db/
+apps/api/storage/uploads/
 
 # Node / Next.js
 node_modules/

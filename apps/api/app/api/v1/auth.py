@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_org, get_current_user, get_db
 from app.core.config import settings
 from app.core.exceptions import BadRequestException, ConflictException, UnauthorizedException
+from app.core.rate_limit import check_rate_limit, clear_attempts, record_failed_attempt
 from app.core.security import create_access_token, get_password_hash, hash_token, verify_password
 from app.models import Membership, Organization, RefreshToken, RoleEnum, User
 from app.providers.email import get_email_provider
@@ -18,6 +19,7 @@ from app.schemas.auth import (
     OrganizationResponse,
     PasswordChangeRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
 )
@@ -143,10 +145,13 @@ async def login(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
+    check_rate_limit(request, endpoint="login")
+
     res = await db.execute(select(User).where(User.email == req.email))
     user = res.scalars().first()
 
     if not user or not verify_password(req.password, user.password_hash):
+        record_failed_attempt(request, endpoint="login")
         raise UnauthorizedException(message="Invalid email or password")
 
     if not user.is_active:
@@ -183,6 +188,7 @@ async def login(
         ip_address=request.client.host if request.client else None,
     )
 
+    clear_attempts(request, endpoint="login")
     set_auth_cookies(response, access_token, raw_refresh)
 
     return TokenResponse(
@@ -230,7 +236,15 @@ async def refresh_tokens(
     res = await db.execute(select(RefreshToken).where(RefreshToken.token_hash == hashed))
     token_rec = res.scalars().first()
 
-    if not token_rec or token_rec.revoked or token_rec.expires_at < datetime.now(UTC):
+    if not token_rec or token_rec.revoked:
+        clear_auth_cookies(response)
+        raise UnauthorizedException(message="Refresh token invalid or expired")
+
+    # SQLite stores datetimes as naive; normalise for comparison
+    expires = token_rec.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if expires < datetime.now(UTC):
         clear_auth_cookies(response)
         raise UnauthorizedException(message="Refresh token invalid or expired")
 
@@ -328,14 +342,49 @@ async def forgot_password(
     res = await db.execute(select(User).where(User.email == req.email))
     user = res.scalars().first()
 
-    if user:
-        reset_token = os.urandom(16).hex()
+    if user and user.is_active:
+        reset_token = os.urandom(24).hex()
+        hashed = hash_token(reset_token)
+        user.password_reset_token_hash = hashed
+        user.password_reset_expires_at = datetime.now(UTC) + timedelta(minutes=30)
+        await db.flush()
+
         email_provider = get_email_provider()
         await email_provider.send_email(
             recipient=user.email,
             subject="SignalRoom Password Reset Request",
-            body_html=f"<p>Use token <strong>{reset_token}</strong> to reset your password.</p>",
-            body_text=f"Use token {reset_token} to reset your password.",
+            body_html=f"<p>Your password reset token is: <strong>{reset_token}</strong></p><p>This token expires in 30 minutes.</p>",
+            body_text=f"Your password reset token is: {reset_token}\nThis token expires in 30 minutes.",
         )
 
     return {"message": "If the account exists, a password reset token has been dispatched."}
+
+
+@router.post("/password/reset")
+async def reset_password(
+    req: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    hashed = hash_token(req.token)
+    res = await db.execute(
+        select(User).where(User.password_reset_token_hash == hashed)
+    )
+    user = res.scalars().first()
+
+    if not user or not user.password_reset_expires_at:
+        raise BadRequestException(message="Invalid or expired password reset token")
+
+    # Handle both tz-aware and tz-naive datetimes from SQLite
+    expires = user.password_reset_expires_at
+    now = datetime.now(UTC)
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    if expires < now:
+        raise BadRequestException(message="Password reset token has expired. Please request a new one.")
+
+    user.password_hash = get_password_hash(req.new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    await db.flush()
+
+    return {"message": "Password has been reset successfully. Please sign in with your new password."}

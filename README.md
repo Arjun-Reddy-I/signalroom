@@ -1,125 +1,265 @@
-# Signalroom
+# SignalRoom — AI Meeting Lifecycle Management Platform
 
-Signalroom is a full-stack operational workspace for a creative studio and SaaS-style delivery team. It combines a Next.js dashboard with a FastAPI backend for authentication, project management, meetings, decisions, action items, and aggregated workspace metrics.
+SignalRoom transforms recorded meeting discussions into structured, searchable, actionable knowledge. Upload a meeting recording and SignalRoom produces a transcript, AI-generated summary, extracted decisions, and tracked action items — all linked across meetings and projects.
 
-## Product overview
+---
 
-- Frontend: Next.js 16 + React 19 + TypeScript + Tailwind CSS
-- Backend: FastAPI + SQLAlchemy + Alembic + SQLite by default
-- Core flows: login, dashboard aggregates, project CRUD, action items, decisions, meetings, and notifications
-- Typical seed account: `alex@signalroom.app` / `Password123!`
+## Features
 
-## Prerequisites
+| Feature | Status |
+|---|---|
+| Meeting management (CRUD, status lifecycle) | ✅ Implemented |
+| Multi-tenant RBAC (owner/admin/member/viewer) | ✅ Implemented |
+| Audio upload + background processing pipeline | ✅ Implemented |
+| Whisper transcription (local, no API key) | ✅ Implemented (requires faster-whisper) |
+| LLM analysis via Ollama (local) | ✅ Implemented (requires Ollama) |
+| OpenAI fallback (GPT-4o-mini) | ✅ Implemented (requires API key) |
+| Semantic + full-text search | ✅ Implemented |
+| Cross-meeting context retrieval | ✅ Implemented |
+| Action item tracking with lifecycle | ✅ Implemented |
+| Password reset with real email | ✅ Implemented |
+| Rate limiting on auth endpoints | ✅ Implemented |
+| ICS calendar event export | ✅ Implemented |
+| Intelligent agenda generation | ✅ Implemented |
+| Reminder scheduling | ✅ Implemented |
+| Meeting detail page with transcript viewer | ✅ Implemented |
+| Audit logging | ✅ Implemented |
+| Docker Compose deployment | ✅ Implemented |
+| CI pipeline (GitHub Actions) | ✅ Implemented |
+| Demo/fallback mode (no API keys needed) | ✅ Implemented |
 
-- Node.js 20.9+
-- pnpm 10+
+---
+
+## Architecture
+
+```
+Next.js 16 Frontend (React 19, TypeScript, Tailwind v4)
+         │  /api/* (Next.js rewrite)
+         ▼
+FastAPI Backend (Python 3.12, SQLAlchemy async, Pydantic v2)
+    │           │              │
+    ▼           ▼              ▼
+SQLite/      ChromaDB       Background
+PostgreSQL   Vector Store    Worker
+(Alembic)    (Embeddings)   (Pipeline)
+                               │
+                  ┌────────────┼────────────┐
+                  ▼            ▼            ▼
+           faster-whisper   Ollama/     sentence-
+           (STT)            OpenAI      transformers
+                            (LLM)       (Embeddings)
+```
+
+---
+
+## Quick Start
+
+### Prerequisites
 - Python 3.12+
-- Git
+- Node 22+ with pnpm
+- (Optional) [Ollama](https://ollama.ai) for real AI analysis
+- (Optional) [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for real transcription
 
-## Quick start
+### 1. Backend setup
 
-### 1) Install frontend dependencies
-
-```powershell
-cd E:\Final_Year_Project
-pnpm install
-```
-
-### 2) Set up the backend environment
-
-```powershell
-cd E:\Final_Year_Project\apps\api
+```bash
+cd apps/api
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS/Linux
+
+pip install -r requirements.txt
+
+# For real STT (downloads ~150MB model on first run):
+pip install faster-whisper
+
+# For real local embeddings (~80MB):
+pip install sentence-transformers
+
+cp .env.example .env
+# Edit .env — see configuration section below
+
+# Create database schema and seed demo data:
+python scripts/seed.py
+
+# Start the API server:
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 3) Start the backend
+### 2. Background worker (separate terminal)
 
-```powershell
-cd E:\Final_Year_Project\apps\api
-.\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```bash
+cd apps/api
+.venv\Scripts\activate
+python -m app.worker
 ```
 
-### 4) Start the frontend
+### 3. Frontend setup
 
-```powershell
-cd E:\Final_Year_Project
+```bash
+# From repo root:
+pnpm install
 pnpm dev
 ```
 
-The app is available at `http://localhost:3000`, and the API docs are available at `http://127.0.0.1:8000/docs`.
+Open http://localhost:3000. Sign in with demo credentials:
+- Email: `alex@signalroom.app`
+- Password: `Password123!`
 
-## Useful commands
+---
 
-```powershell
-# Frontend
-pnpm dev
-pnpm build
-pnpm start
+## Configuration
 
-# Backend
-cd apps\api
-.\.venv\Scripts\Activate.ps1
-pytest -q
-uvicorn app.main:app --reload
+Key environment variables in `apps/api/.env`:
+
+```env
+# AI Providers
+STT_PROVIDER=fallback          # or: whisper
+LLM_PROVIDER=fallback          # or: ollama, openai
+EMBEDDING_PROVIDER=fallback    # or: sentence_transformers, openai
+WHISPER_MODEL=base             # tiny/base/small/medium
+LLM_MODEL=llama3.2             # model name for ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OPENAI_API_KEY=                # optional
+
+# Security (CHANGE IN PRODUCTION)
+SECRET_KEY=your-secret-key-here
+ENCRYPTION_KEY=your-fernet-key-here
+
+# Email (optional — console log by default)
+EMAIL_PROVIDER=fallback        # or: smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=your@email.com
+SMTP_PASSWORD=your-app-password
 ```
 
-## Project structure
+---
 
-```text
-app/                  Next.js app router frontend
-apps/api/            FastAPI backend and persistence layer
-components/          Reusable UI and dashboard shell modules
-data/                Seed and mock data
-lib/                 Frontend utilities and client configuration
-services/            Dashboard and API service wrappers
-types/               Shared TypeScript domain types
+## Enabling Real AI
+
+### Whisper (Speech-to-Text)
+```bash
+pip install faster-whisper
+# In .env:
+STT_PROVIDER=whisper
+WHISPER_MODEL=base    # ~150MB download on first run
 ```
 
-## Deployment notes
-
-This repository is set up as a monorepo for local development and GitHub deployment. The frontend proxy points to the local API, and the backend is intended to run separately from the Next.js app for a clean separation of concerns.
-
-## Verification
-
-The project has been validated with:
-
-```powershell
-cd E:\Final_Year_Project
-pnpm build
-cd apps\api
-python -m pytest -q
+### Ollama (LLM Analysis)
+```bash
+# Install Ollama from https://ollama.ai
+ollama serve
+ollama pull llama3.2  # ~2GB download
+# In .env:
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.2
 ```
 
-These checks should complete successfully before publishing or pushing a release branch.
-pnpm build
+### Local Embeddings (Semantic Search)
+```bash
+pip install sentence-transformers
+# In .env:
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_MODEL=all-MiniLM-L6-v2  # ~80MB download
 ```
 
-Then manually check:
+---
 
-- Desktop layout at a wide viewport.
-- Mobile layout below 760px wide.
-- Keyboard navigation and visible focus states.
-- Project filtering and empty results.
-- New project validation and creation.
-- Refresh behavior and any expected data persistence.
-- Reduced-motion behavior when the operating system preference is enabled.
+## Running the Full Workflow
 
-## Current Limitations
+1. Sign in at http://localhost:3000
+2. Create a project and a meeting
+3. Open the meeting detail page (`/meetings/{id}`)
+4. Upload a WAV or MP3 recording
+5. The background worker picks it up and runs the pipeline
+6. Poll the progress bar — 7 stages: validate → transcribe → analyse → persist → embed → reminders
+7. View the transcript, summary, decisions, and action items
+8. Search across meetings at the Search view or via the search overlay (Ctrl+K)
+9. Generate a meeting agenda for an upcoming meeting
 
-This is currently a front-end prototype rather than a complete production dashboard:
+---
 
-- Dashboard data comes from static mock data.
-- New projects are not persisted.
-- Calendar, Team, Archive, Settings, and Analytics currently use structured frontend states while their backend workflows are pending.
-- Meeting recording, transcription, AI processing, calendar sync, semantic search, and notifications are represented by typed mock boundaries rather than live integrations.
-- Several labels, dates, statistics, and workspace details remain demo values.
-- There is no automated test suite or lint command yet.
+## Docker Compose
 
-These limitations are useful signposts for the next development phase: establish a persistent data model, implement the secondary views, centralize derived statistics, and add automated validation before deployment.
+```bash
+# Copy and configure env vars:
+cp apps/api/.env.example apps/api/.env
 
-## License
+docker compose up --build
+```
 
-No license file is currently included in the project.
+Services:
+- `api` — FastAPI on port 8000
+- `worker` — Background pipeline worker
+- `chromadb` — Vector store on port 8001
+- `web` — Next.js frontend on port 3000
+
+---
+
+## Testing
+
+```bash
+# Backend tests (13 tests):
+cd apps/api
+python -m pytest tests/ -v
+
+# Frontend type check:
+pnpm exec tsc --noEmit
+
+# Backend lint:
+cd apps/api && ruff check app/
+```
+
+**Test results (verified 2026-10-14):**
+- Backend: 13/13 passing
+- TypeScript: 0 errors
+- Ruff: 0 errors
+
+---
+
+## Demo vs Real AI Output
+
+All demo/fallback output is:
+- Tagged with `provider: "demo-fallback"` in the database
+- Marked with `[DEMO]` prefix in transcript and analysis text
+- Shown with a visible amber warning banner in the meeting detail UI
+
+When real AI providers are configured, output is tagged with the actual provider name (e.g., `provider: "faster-whisper"`, `provider: "ollama"`).
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:8000/api/v1`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/auth/register` | POST | Register + create organisation |
+| `/auth/login` | POST | Login (rate limited) |
+| `/auth/refresh` | POST | Rotate refresh token |
+| `/auth/password/forgot` | POST | Request password reset |
+| `/auth/password/reset` | POST | Reset with token |
+| `/meetings` | GET/POST | List/create meetings |
+| `/meetings/{id}` | GET/PATCH/DELETE | Meeting detail |
+| `/meetings/{id}/upload` | POST | Upload audio |
+| `/meetings/{id}/job` | GET | Processing job status |
+| `/meetings/{id}/context` | GET | Cross-meeting context |
+| `/meetings/{id}/agenda` | POST | Generate agenda |
+| `/meetings/{id}/calendar.ics` | GET | ICS export |
+| `/search?q=` | GET | Semantic + full-text search |
+| `/action-items` | GET/POST | Action item management |
+| `/decisions` | GET/POST | Decisions |
+| `/dashboard/aggregates` | GET | Dashboard stats |
+| `/health/ready` | GET | Health check |
+
+Full OpenAPI docs available at `http://localhost:8000/api/v1/docs` in development mode.
+
+---
+
+## Known Limitations
+
+- The background worker uses simple sequential polling (no SKIP LOCKED) with SQLite. For parallel workers, switch to PostgreSQL.
+- Speaker diarization is not implemented — all speakers are labelled "Speaker 1". Use a diarization library (e.g., pyannote) to add this.
+- Google Calendar OAuth integration is partially modelled but not implemented — ICS export is provided as a practical alternative.
+- Frontend views for Analytics, Calendar, Team, and Settings are functional placeholders backed by real API data.
+- Rate limiting uses in-memory storage — restarting the server resets attempt counters. For production, use Redis.

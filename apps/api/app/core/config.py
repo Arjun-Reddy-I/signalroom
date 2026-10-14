@@ -1,5 +1,8 @@
-from pydantic import field_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_SECRET = "signalroom-secret-key-change-this-in-production-32bytes!"
+_DEFAULT_ENCRYPTION = "gAAAAABlX1kZ-9X8vR3X5Z1V9X8vR3X5Z1V9X8vR3X4="
 
 
 class Settings(BaseSettings):
@@ -16,6 +19,20 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
+    @model_validator(mode="after")
+    def reject_default_secrets_in_production(self) -> "Settings":
+        if self.ENVIRONMENT == "production":
+            if self.SECRET_KEY == _DEFAULT_SECRET:
+                raise ValueError(
+                    "SECRET_KEY must be changed from the default value in production. "
+                    "Set a strong random SECRET_KEY in your environment or .env file."
+                )
+            if self.ENCRYPTION_KEY == _DEFAULT_ENCRYPTION:
+                raise ValueError(
+                    "ENCRYPTION_KEY must be changed from the default value in production."
+                )
+        return self
+
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./signalroom.db"
 
@@ -25,21 +42,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # CORS
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-    ]
+    # CORS — stored as a plain comma-separated string to avoid .env parsing issues
+    # e.g.  CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    CORS_ORIGINS_STR: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001"
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, list):
-            return v
-        return ["http://localhost:3000", "http://127.0.0.1:3000"]
+    @property
+    def CORS_ORIGINS(self) -> list[str]:  # noqa: N802
+        return [o.strip() for o in self.CORS_ORIGINS_STR.split(",") if o.strip()]
 
     # Storage
     STORAGE_PROVIDER: str = "local"  # "local" | "s3"
@@ -50,16 +59,19 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_DIR: str = "./chroma_db"
 
     # External Provider Configs
-    STT_PROVIDER: str = "fallback"  # "fallback" | "whisper" | "openai"
-    WHISPER_MODEL: str = "base"
+    STT_PROVIDER: str = "fallback"  # "fallback" | "whisper"
+    WHISPER_MODEL: str = "base"  # "tiny", "base", "small", "medium"
+    WHISPER_DEVICE: str = "cpu"
+    WHISPER_COMPUTE_TYPE: str = "int8"
 
-    LLM_PROVIDER: str = "fallback"  # "fallback" | "openai" | "gemini"
-    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_PROVIDER: str = "fallback"  # "fallback" | "ollama" | "openai"
+    LLM_MODEL: str = "llama3.2"  # model name for ollama
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
 
-    EMBEDDING_PROVIDER: str = "fallback"  # "fallback" | "openai"
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_PROVIDER: str = "fallback"  # "fallback" | "sentence_transformers" | "openai"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
-    # API Keys
+    # API Keys (optional — fallback providers used when empty)
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 

@@ -7,7 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.v1 import action_items, auth, dashboard, decisions, health, meetings, notifications, projects
+from app.api.v1 import (
+    action_items,
+    agenda,
+    auth,
+    dashboard,
+    decisions,
+    health,
+    meetings,
+    notifications,
+    projects,
+    search,
+)
 from app.core.config import settings
 from app.core.exceptions import (
     AppException,
@@ -80,6 +91,8 @@ app.include_router(decisions.router, prefix=settings.API_V1_STR)
 app.include_router(action_items.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(dashboard.router, prefix=settings.API_V1_STR)
+app.include_router(search.router, prefix=settings.API_V1_STR)
+app.include_router(agenda.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
