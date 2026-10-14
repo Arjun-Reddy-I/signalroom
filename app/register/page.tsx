@@ -8,10 +8,10 @@ import { apiFetch } from '@/lib/api/client'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [fullName, setFullName] = useState('Alex Morgan')
-  const [email, setEmail] = useState('alex@signalroom.app')
-  const [password, setPassword] = useState('Password123!')
-  const [organizationName, setOrganizationName] = useState('SignalRoom Studio')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [organizationName, setOrganizationName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
