@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Archive, BarChart3, Bell, CalendarDays, Check, ChevronRight, FileText, Grid2X2, Menu, Plus, Search, Settings2, Sparkles, UsersRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ThemeToggle } from '@/components/signalroom/theme-toggle'
+import { MeetingDialog } from '@/components/signalroom/dialogs/MeetingDialog'
+import { ProjectDialog } from '@/components/signalroom/dialogs/ProjectDialog'
+import { SearchOverlay } from '@/components/signalroom/SearchOverlay'
+import { AnalyticsView } from '@/components/signalroom/views/AnalyticsView'
+import { ArchiveView } from '@/components/signalroom/views/ArchiveView'
+import { CalendarView } from '@/components/signalroom/views/CalendarView'
+import { SettingsView } from '@/components/signalroom/views/SettingsView'
+import { TeamView } from '@/components/signalroom/views/TeamView'
 import { createProjectRequest, updateActionItemRequest } from '@/lib/api/workspace'
 import { formatDateLong, getDateRangeLabel, getGreeting, getMeetingStatusTone, getStatusLabel, initialsTone, isActionDone, projectStatusTone, type DashboardData, type Meeting, type NewProjectInput, type Project, type ToastState, type ViewName } from '@/types/signalroom'
 
@@ -53,13 +61,6 @@ function MeetingsView({ data, onSelect }: { data: DashboardData; onSelect: (meet
 
 function ActionItemsView({ data, onToggle }: { data: DashboardData; onToggle: (id: string, status: boolean) => void }) { return <ViewFrame eyebrow="Follow-through" title="Action items"><Panel className="table-panel"><div className="table-head"><span>Task</span><span>Owner</span><span>Due</span><span>Status</span></div>{data.actionItems.map((item) => <div className={`task-row ${isActionDone(item) ? 'task-done' : ''}`} key={item.id}><button className="task-check" aria-label={`Mark ${item.title} complete`} onClick={() => onToggle(item.id, isActionDone(item))}>{isActionDone(item) && <Check />}</button><div><strong>{item.title}</strong><small>{item.source} / {item.project}</small></div><span>{item.owner}</span><span>{item.dueDate ? formatDateLong(item.dueDate) : 'No due date'}</span><span className={`priority ${item.priority.toLowerCase()}`}>{item.status}</span></div>)}{data.actionItems.length === 0 && <EmptyState title="No action items" copy="Follow-up work extracted from meetings will appear here." />}</Panel></ViewFrame> }
 
-function ConnectedView({ active, data }: { active: ViewName; data: DashboardData }) { const descriptions: Record<string, string> = { Calendar: 'Upcoming meetings and deadlines from the connected workspace.', Team: 'Team capacity data will appear when members are connected.', Search: 'Search the meetings, action items, and decisions loaded for this workspace.', Analytics: 'Live counts from meetings, follow-through, and decisions.', Archive: 'Archived workspace records will appear here.', Settings: 'Workspace preferences and integrations.' }; return <ViewFrame eyebrow="Connected workspace" title={active}><Panel className="feature-empty"><div className="feature-icon"><Sparkles /></div><h2>{descriptions[active]}</h2><p>{active === 'Search' ? 'Use the search button in the top bar to search the current workspace data.' : 'This view is connected to the live API. Additional records will appear as the corresponding workspace data exists.'}</p><div className="feature-stats"><span><strong>{data.meetings.length}</strong> meetings indexed</span><span><strong>{data.actionItems.length}</strong> actions tracked</span><span><strong>{data.decisions.length}</strong> decisions captured</span></div></Panel></ViewFrame> }
-
-function MeetingDialog({ meeting, onClose }: { meeting: Meeting; onClose: () => void }) { return <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="dialog meeting-dialog"><button className="dialog-close" onClick={onClose} aria-label="Close meeting"><X /></button><div className="eyebrow">{meeting.project} / {formatDateLong(meeting.date)}</div><h2>{meeting.title}</h2><p>{meeting.summary}</p><div className="detail-grid"><div><span className="eyebrow">Status</span><strong>{meeting.status}</strong></div><div><span className="eyebrow">Confidence</span><strong>{meeting.confidence ? `${meeting.confidence}%` : 'Processing'}</strong></div><div><span className="eyebrow">Participants</span><strong>{meeting.attendees.length ? meeting.attendees.join(', ') : 'Unavailable'}</strong></div></div><button className="button-primary dialog-wide" onClick={onClose}>Done</button></div></div> }
-
-function ProjectDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (input: NewProjectInput) => void }) { const [input, setInput] = useState<NewProjectInput>({ name: '', client: '' }); const [touched, setTouched] = useState(false); const valid = input.name.trim().length > 1 && input.client.trim().length > 1; return <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="dialog" role="dialog" aria-modal="true"><button className="dialog-close" aria-label="Close dialog" onClick={onClose}><X /></button><span className="dialog-mark"><Plus /></span><span className="eyebrow">New workspace record</span><h2>Create a new project</h2><p>Projects are saved to the connected workspace.</p><div className="dialog-fields"><label>Project name<input autoFocus value={input.name} onChange={(event) => setInput({ ...input, name: event.target.value })} placeholder="e.g. Brand refresh" /></label><label>Client<input value={input.client} onChange={(event) => setInput({ ...input, client: event.target.value })} placeholder="e.g. Northstar Health" /></label></div>{touched && !valid && <p className="form-error">Add a project name and client to continue.</p>}<div className="dialog-actions"><button className="button-quiet" onClick={onClose}>Cancel</button><button className="button-primary" onClick={() => { setTouched(true); if (valid) onCreate(input) }}><Plus /> Add project</button></div></div></div> }
-
-function SearchOverlay({ data, onClose, onOpenMeeting }: { data: DashboardData; onClose: () => void; onOpenMeeting: (meeting: Meeting) => void }) { const [query, setQuery] = useState(''); const normalized = query.trim().toLowerCase(); const meetings = data.meetings.filter((item) => `${item.title} ${item.project} ${item.summary}`.toLowerCase().includes(normalized)); const tasks = data.actionItems.filter((item) => `${item.title} ${item.owner} ${item.project}`.toLowerCase().includes(normalized)); const decisions = data.decisions.filter((item) => `${item.text} ${item.project} ${item.owner}`.toLowerCase().includes(normalized)); return <div className="search-layer" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><div className="search-dialog"><div className="search-input-wrap"><Search /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search meetings, tasks, decisions, people" aria-label="Global search" /><kbd>ESC</kbd></div><div className="search-results">{!normalized && <div className="search-hint"><Sparkles /><span>Search the connected workspace</span></div>}{normalized && meetings.map((meeting) => <button className="search-result" key={meeting.id} onClick={() => { onOpenMeeting(meeting); onClose() }}><CalendarDays /><span><strong>{meeting.title}</strong><small>{meeting.project} / {formatDateLong(meeting.date)}</small></span><ChevronRight /></button>)}{normalized && tasks.map((task) => <div className="search-result" key={task.id}><Check /><span><strong>{task.title}</strong><small>{task.owner} / {task.project}</small></span></div>)}{normalized && decisions.map((decision) => <div className="search-result" key={decision.id}><FileText /><span><strong>{decision.text}</strong><small>{decision.project} / {decision.owner}</small></span></div>)}{normalized && !meetings.length && !tasks.length && !decisions.length && <EmptyState title="No matches" copy="Try a meeting, project, person, or task." />}</div></div></div> }
 
 export function AppShell({ data }: { data: DashboardData }) {
   const router = useRouter()
@@ -73,13 +74,171 @@ export function AppShell({ data }: { data: DashboardData }) {
   const [toast, setToast] = useState<ToastState | null>(null)
   const [userName, setUserName] = useState('Workspace member')
 
-  useEffect(() => { const slug = new URLSearchParams(window.location.search).get('view') ?? ''; if (slugViews[slug]) setActive(slugViews[slug]); const saved = window.localStorage.getItem('signalroom-user'); if (saved) { try { const user = JSON.parse(saved) as { full_name?: string }; if (user.full_name) setUserName(user.full_name) } catch { /* ignore malformed session metadata */ } } const onKey = (event: KeyboardEvent) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearchOpen(true) } if (event.key === 'Escape') { setSearchOpen(false); setProjectDialog(false); setSelectedMeeting(null); setDrawer(false) } }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey) }, [])
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('view') ?? ''
+    if (slugViews[slug]) setActive(slugViews[slug])
+    const saved = window.localStorage.getItem('signalroom-user')
+    if (saved) {
+      try {
+        const user = JSON.parse(saved) as { full_name?: string }
+        if (user.full_name) setUserName(user.full_name)
+      } catch { /* ignore malformed session metadata */ }
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+      if (event.key === 'Escape') {
+        setSearchOpen(false)
+        setProjectDialog(false)
+        setSelectedMeeting(null)
+        setDrawer(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const projectData = useMemo(() => ({ ...data, actionItems }), [data, actionItems])
   const userInitials = userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'WM'
-  const notify = (message: string, type: ToastState['type'] = 'info') => { setToast({ message, type }); window.setTimeout(() => setToast(null), 3200) }
-  const changeView = (view: ViewName) => { setActive(view); router.push(viewSlugs[view] ? `/?view=${viewSlugs[view]}` : '/') }
-  const addProject = async (input: NewProjectInput) => { try { const response = await createProjectRequest(input) as { id: string; name: string; client?: string | null; status: string; owner_id?: string | null; created_at: string }; const project: Project = { id: response.id, name: response.name, client: response.client ?? input.client, phase: 'Strategy', dueDate: response.created_at.slice(0, 10), progress: 0, owner: response.owner_id ? `Member ${response.owner_id.slice(0, 8)}` : 'Unassigned', ownerInitials: 'NA', status: response.status === 'at_risk' ? 'at-risk' : response.status === 'in_review' ? 'in-review' : 'on-track', accent: 'amber' }; setProjects((current) => [project, ...current]); setProjectDialog(false); notify(`${project.name} was saved.`, 'success') } catch { notify('Project could not be saved. Try again.', 'error') } }
-  const toggleAction = async (id: string, wasDone: boolean) => { try { await updateActionItemRequest(id, { status: wasDone ? 'open' : 'completed' }); setActionItems((current) => current.map((item) => item.id === id ? { ...item, status: wasDone ? 'Pending' : 'Done' } : item)); notify('Action item updated.', 'success') } catch { notify('Action item could not be updated.', 'error') } }
+  const notify = (message: string, type: ToastState['type'] = 'info') => {
+    setToast({ message, type })
+    window.setTimeout(() => setToast(null), 3200)
+  }
+  const changeView = (view: ViewName) => {
+    setActive(view)
+    router.push(viewSlugs[view] ? `/?view=${viewSlugs[view]}` : '/')
+  }
+  const addProject = async (input: NewProjectInput) => {
+    try {
+      const response = await createProjectRequest(input) as {
+        id: string; name: string; client?: string | null
+        status: string; owner_id?: string | null; created_at: string
+      }
+      const project: Project = {
+        id: response.id,
+        name: response.name,
+        client: response.client ?? input.client,
+        phase: 'Strategy',
+        dueDate: response.created_at.slice(0, 10),
+        progress: 0,
+        owner: response.owner_id ? `Member ${response.owner_id.slice(0, 8)}` : 'Unassigned',
+        ownerInitials: 'NA',
+        status: response.status === 'at_risk' ? 'at-risk' : response.status === 'in_review' ? 'in-review' : 'on-track',
+        accent: 'amber',
+      }
+      setProjects((current) => [project, ...current])
+      setProjectDialog(false)
+      notify(`${project.name} was saved.`, 'success')
+    } catch {
+      notify('Project could not be saved. Try again.', 'error')
+    }
+  }
+  const toggleAction = async (id: string, wasDone: boolean) => {
+    try {
+      await updateActionItemRequest(id, { status: wasDone ? 'open' : 'completed' })
+      setActionItems((current) =>
+        current.map((item) => item.id === id ? { ...item, status: wasDone ? 'Pending' : 'Done' } : item)
+      )
+      notify('Action item updated.', 'success')
+    } catch {
+      notify('Action item could not be updated.', 'error')
+    }
+  }
 
-  return <div className="app-frame"><Sidebar active={active} onChange={changeView} open={drawer} onClose={() => setDrawer(false)} /><div className="app-content"><Topbar active={active} userName={userName} userInitials={userInitials} onMenu={() => setDrawer(true)} onSearch={() => setSearchOpen(true)} onNotify={() => notify('Notifications are connected to the workspace API.')} /><main className="main-content">{active === 'Overview' && <Overview data={projectData} projects={projects} userName={userName.split(' ')[0]} onNew={() => setProjectDialog(true)} onOpenProject={(project) => notify(`${project.name} is connected and ready to edit.`)} onOpenMeeting={setSelectedMeeting} />}{active === 'Meetings' && <MeetingsView data={projectData} onSelect={setSelectedMeeting} />}{active === 'Action Items' && <ActionItemsView data={projectData} onToggle={toggleAction} />}{!['Overview', 'Meetings', 'Action Items'].includes(active) && <ConnectedView active={active} data={projectData} />}</main></div><AnimatePresence>{projectDialog && <ProjectDialog onClose={() => setProjectDialog(false)} onCreate={addProject} />}{selectedMeeting && <MeetingDialog meeting={selectedMeeting} onClose={() => setSelectedMeeting(null)} />}{searchOpen && <SearchOverlay data={projectData} onClose={() => setSearchOpen(false)} onOpenMeeting={setSelectedMeeting} />}</AnimatePresence>{toast && <div className={`toast toast-${toast.type}`}><span><Check /></span>{toast.message}<button aria-label="Dismiss notification" onClick={() => setToast(null)}><X /></button></div>}</div>
+  function renderView() {
+    switch (active) {
+      case 'Overview':
+        return (
+          <Overview
+            data={projectData}
+            projects={projects}
+            userName={userName.split(' ')[0]}
+            onNew={() => setProjectDialog(true)}
+            onOpenProject={(project) => notify(`${project.name} — open the full detail view to edit.`)}
+            onOpenMeeting={setSelectedMeeting}
+          />
+        )
+      case 'Meetings':
+        return <MeetingsView data={projectData} onSelect={setSelectedMeeting} />
+      case 'Action Items':
+        return <ActionItemsView data={projectData} onToggle={toggleAction} />
+      case 'Analytics':
+        return <AnalyticsView />
+      case 'Calendar':
+        return <CalendarView />
+      case 'Team':
+        return <TeamView />
+      case 'Archive':
+        return <ArchiveView />
+      case 'Settings':
+        return <SettingsView />
+      case 'Search':
+        // Trigger the search overlay immediately when navigating to Search
+        return (
+          <motion.div className="view-stack" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="view-heading">
+              <div>
+                <span className="eyebrow">Workspace search</span>
+                <h1>Search</h1>
+              </div>
+            </div>
+            <section className="panel feature-empty">
+              <div className="feature-icon"><Search /></div>
+              <h2>Search across all meetings, transcripts, decisions, and tasks.</h2>
+              <p>Use the search button in the toolbar or press <kbd>Ctrl+K</kbd> to open the search overlay.</p>
+              <button className="button-primary" onClick={() => setSearchOpen(true)}>
+                <Search /> Open search
+              </button>
+            </section>
+          </motion.div>
+        )
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="app-frame">
+      <Sidebar active={active} onChange={changeView} open={drawer} onClose={() => setDrawer(false)} />
+      <div className="app-content">
+        <Topbar
+          active={active}
+          userName={userName}
+          userInitials={userInitials}
+          onMenu={() => setDrawer(true)}
+          onSearch={() => setSearchOpen(true)}
+          onNotify={() => notify('Notifications are connected to the workspace API.')}
+        />
+        <main className="main-content">
+          {renderView()}
+        </main>
+      </div>
+      <AnimatePresence>
+        {projectDialog && (
+          <ProjectDialog onClose={() => setProjectDialog(false)} onCreate={(i) => void addProject(i)} />
+        )}
+        {selectedMeeting && (
+          <MeetingDialog meeting={selectedMeeting} onClose={() => setSelectedMeeting(null)} />
+        )}
+        {searchOpen && (
+          <SearchOverlay
+            data={projectData}
+            onClose={() => setSearchOpen(false)}
+            onOpenMeeting={setSelectedMeeting}
+          />
+        )}
+      </AnimatePresence>
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          <span><Check /></span>
+          {toast.message}
+          <button aria-label="Dismiss notification" onClick={() => setToast(null)}>
+            <X />
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
