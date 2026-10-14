@@ -64,9 +64,10 @@ class Settings(BaseSettings):
     WHISPER_DEVICE: str = "cpu"
     WHISPER_COMPUTE_TYPE: str = "int8"
 
-    LLM_PROVIDER: str = "fallback"  # "fallback" | "ollama" | "openai"
-    LLM_MODEL: str = "llama3.2"  # model name for ollama
+    LLM_PROVIDER: str = "fallback"  # "fallback" | "ollama" | "openai" | "gemini"
+    LLM_MODEL: str = "llama3"  # model name for ollama; for gemini use "gemini-1.5-flash"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
+    GEMINI_LLM_MODEL: str = "gemini-2.5-flash"  # fast, capable, free-tier available
 
     EMBEDDING_PROVIDER: str = "fallback"  # "fallback" | "sentence_transformers" | "openai"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
