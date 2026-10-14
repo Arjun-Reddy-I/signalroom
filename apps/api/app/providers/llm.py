@@ -55,25 +55,25 @@ class LLMProvider(ABC):
 
 # ── Structured output prompt ────────────────────────────────────────────────
 
-_ANALYSIS_PROMPT = """You are an expert meeting analyst. Analyze the transcript below and extract structured information.
+_ANALYSIS_PROMPT = """You are an expert meeting analyst for a professional workspace. Analyze the meeting transcript below and extract structured data.
 
-Return ONLY valid JSON matching exactly this schema (no markdown, no extra text):
+Return ONLY a valid JSON object (no markdown code blocks, no extra text) matching this exact schema:
 {{
-  "summary_text": "2-3 sentence summary of what was discussed and decided",
-  "key_points": ["point 1", "point 2", "point 3"],
+  "summary_text": "2-4 sentence summary covering the main topic, key outcomes, and any important context",
+  "key_points": ["Specific point 1", "Specific point 2", "Specific point 3", "Specific point 4"],
   "decisions": [
     {{
-      "title": "Decision title (one line)",
-      "description": "What was decided and why",
-      "category": "Architecture|Product|Process|Business|General",
+      "title": "Short imperative title of what was decided",
+      "description": "What was decided, why, and any conditions or caveats",
+      "category": "Architecture|Product|Process|Business|Technical|General",
       "confidence": 0.95
     }}
   ],
   "action_items": [
     {{
-      "title": "Action item title (imperative verb phrase)",
-      "description": "What needs to be done",
-      "owner_name": "Full name or null if unclear",
+      "title": "Verb phrase describing the task (e.g. 'Set up CI pipeline', 'Draft proposal for client')",
+      "description": "Specific details about what needs to be done",
+      "owner_name": "Full name of the person responsible, or null if unclear",
       "due_days_offset": 7,
       "priority": "high|medium|low",
       "confidence": 0.90
@@ -81,12 +81,13 @@ Return ONLY valid JSON matching exactly this schema (no markdown, no extra text)
   ]
 }}
 
-Rules:
-- Only extract decisions/actions explicitly stated or strongly implied in the transcript
-- Do not invent names, dates, or commitments not present in the text
-- If owner is unclear, set owner_name to null
-- due_days_offset is days from meeting date; use 3 for "soon", 7 for "next week", 14 for "two weeks"
-- Mark confidence < 0.8 for ambiguous items
+Important rules:
+- Extract ONLY decisions and actions that were explicitly stated in the transcript
+- For owner_name: use names mentioned in the transcript, or null if unclear — never invent names
+- For due_days_offset: use 1-3 for "today/tomorrow/ASAP", 7 for "this week/next week", 14 for "two weeks", 30 for "this month"
+- Mark confidence < 0.75 for ambiguous or inferred items
+- key_points should be specific facts, not generic statements
+- If a section has no items, use an empty array []
 
 Meeting date: {meeting_date}
 
@@ -146,6 +147,7 @@ class OllamaLLMProvider(LLMProvider):
             "model": self._model,
             "prompt": prompt,
             "stream": False,
+            "format": "json",  # Forces Ollama to return pure JSON (supported in ollama >= 0.1.9)
             "options": {"temperature": 0.1, "num_predict": 2048},
         }
 
@@ -220,6 +222,80 @@ class OpenAILLMProvider(LLMProvider):
                 raise RuntimeError(f"OpenAI API error {exc.response.status_code}: {exc.response.text[:200]}")
 
 
+# ── Gemini ───────────────────────────────────────────────────────────────────
+
+class GeminiLLMProvider(LLMProvider):
+    """Uses Google Gemini API (gemini-1.5-flash by default — fast and free-tier friendly).
+
+    Docs: https://ai.google.dev/api/generate-content
+    Free tier: 15 RPM, 1M TPD — sufficient for a meeting analysis workload.
+    """
+
+    def __init__(self, api_key: str, model: str = "gemini-1.5-flash") -> None:
+        self._api_key = api_key
+        self._model = model
+        # Model name can be passed with or without the "models/" prefix
+        model_path = model if model.startswith("models/") else f"models/{model}"
+        self._base_url = f"https://generativelanguage.googleapis.com/v1beta/{model_path}:generateContent"
+
+    async def analyze_transcript(
+        self, transcript_text: str, meeting_date: datetime
+    ) -> MeetingAnalysisResult:
+        try:
+            import httpx
+        except ImportError:
+            raise RuntimeError("httpx is required for Gemini. It should already be installed.")
+
+        prompt = _ANALYSIS_PROMPT.format(
+            meeting_date=meeting_date.strftime("%Y-%m-%d"),
+            transcript=transcript_text[:12000],
+        )
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": 2048,
+                "responseMimeType": "application/json",
+            },
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                resp = await client.post(
+                    self._base_url,
+                    params={"key": self._api_key},
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                raw = data["candidates"][0]["content"]["parts"][0]["text"]
+            except httpx.HTTPStatusError as exc:
+                body = exc.response.text[:300]
+                raise RuntimeError(f"Gemini API error {exc.response.status_code}: {body}")
+            except (KeyError, IndexError) as exc:
+                raise RuntimeError(f"Unexpected Gemini response structure: {exc}")
+
+        # Retry once on parse failure
+        try:
+            return _parse_llm_response(raw, provider="gemini", model=self._model)
+        except ValueError as first_err:
+            logger.warning(f"Gemini parse attempt 1 failed: {first_err}. Retrying.")
+            payload["contents"][0]["parts"][0]["text"] = (
+                prompt + "\n\nCRITICAL: Your response must be ONLY the JSON object. No markdown, no explanation."
+            )
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(
+                    self._base_url,
+                    params={"key": self._api_key},
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                raw2 = data["candidates"][0]["content"]["parts"][0]["text"]
+            return _parse_llm_response(raw2, provider="gemini", model=self._model)
+
+
 # ── Fallback ─────────────────────────────────────────────────────────────────
 
 class FallbackLLMProvider(LLMProvider):
@@ -285,16 +361,19 @@ def get_llm_provider() -> LLMProvider:
     if _provider_instance is not None:
         return _provider_instance
 
-    if settings.LLM_PROVIDER == "ollama":
-        try:
-            _provider_instance = OllamaLLMProvider(
-                base_url=settings.OLLAMA_BASE_URL,
-                model=settings.LLM_MODEL,
-            )
-            logger.info(f"Using Ollama LLM provider (model={settings.LLM_MODEL}, url={settings.OLLAMA_BASE_URL})")
-        except Exception as exc:
-            logger.warning(f"Ollama provider init failed ({exc}), using fallback")
-            _provider_instance = FallbackLLMProvider()
+    # Use SmartLLMProvider when Gemini key is present — it chains Gemini → Ollama → Fallback
+    if settings.GEMINI_API_KEY:
+        _provider_instance = SmartLLMProvider()
+        logger.info(
+            f"Using SmartLLM provider chain: Gemini({settings.GEMINI_LLM_MODEL}) "
+            f"→ Ollama({settings.LLM_MODEL}) → Demo fallback"
+        )
+    elif settings.LLM_PROVIDER == "ollama":
+        _provider_instance = OllamaLLMProvider(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.LLM_MODEL,
+        )
+        logger.info(f"Using Ollama LLM provider (model={settings.LLM_MODEL})")
     elif settings.LLM_PROVIDER == "openai" and settings.OPENAI_API_KEY:
         _provider_instance = OpenAILLMProvider(
             api_key=settings.OPENAI_API_KEY,
@@ -302,11 +381,49 @@ def get_llm_provider() -> LLMProvider:
         )
         logger.info(f"Using OpenAI LLM provider (model={settings.LLM_MODEL})")
     else:
-        if settings.LLM_PROVIDER not in ("fallback", ""):
-            logger.warning(
-                f"Unknown or unconfigured LLM_PROVIDER '{settings.LLM_PROVIDER}', using demo fallback. "
-                "Set LLM_PROVIDER=ollama and run 'ollama serve' for real AI analysis."
-            )
+        logger.warning("No LLM configured. Using demo fallback. Set GEMINI_API_KEY or LLM_PROVIDER=ollama.")
         _provider_instance = FallbackLLMProvider()
 
     return _provider_instance
+
+
+class SmartLLMProvider(LLMProvider):
+    """Tries providers in priority order: Ollama (local) → Gemini → Demo fallback.
+
+    Ollama goes first since it's local and has no rate limits.
+    Gemini is tried if Ollama is unavailable.
+    Demo fallback is always last.
+    """
+
+    def __init__(self) -> None:
+        self._providers: list[LLMProvider] = []
+        # Ollama first — local, fast, no rate limits
+        self._providers.append(OllamaLLMProvider(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.LLM_MODEL,
+        ))
+        # Gemini second — cloud fallback when Ollama is down
+        if settings.GEMINI_API_KEY:
+            self._providers.append(GeminiLLMProvider(
+                api_key=settings.GEMINI_API_KEY,
+                model=settings.GEMINI_LLM_MODEL,
+            ))
+        # Demo fallback always last
+        self._providers.append(FallbackLLMProvider())
+
+    async def analyze_transcript(
+        self, transcript_text: str, meeting_date: datetime
+    ) -> MeetingAnalysisResult:
+        last_error: Exception = RuntimeError("No providers available")
+        for provider in self._providers:
+            try:
+                result = await provider.analyze_transcript(transcript_text, meeting_date)
+                if result.provider != "demo-fallback":
+                    logger.info(f"SmartLLM: used {result.provider}/{result.model}")
+                return result
+            except Exception as exc:
+                logger.warning(
+                    f"SmartLLM: {type(provider).__name__} failed ({exc!s:.100}), trying next provider"
+                )
+                last_error = exc
+        raise last_error
