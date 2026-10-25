@@ -52,36 +52,40 @@ export default function RegisterPage() {
   return (
     <main className="auth-shell">
       <div className="auth-panel">
-        <div className="auth-brand">
-          <span className="brand-mark">S</span>
-          <span>Signalroom</span>
+        <div className="auth-panel-header">
+          <div className="auth-brand">
+            <span className="brand-mark">S</span>
+            <span>Signalroom</span>
+          </div>
+          <h1>Create your workspace</h1>
+          <p>Bring meetings, decisions, and follow-through into one system.</p>
         </div>
-        <h1>Create your workspace</h1>
-        <p>Bring meetings, decisions, and follow-through into one system.</p>
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label>
-            Full name
-            <input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-          </label>
-          <label>
-            Workspace name
-            <input type="text" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} />
-          </label>
-          <label>
-            Work email
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <label>
-            Password
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          {error ? <div className="auth-error">{error}</div> : null}
-          <button type="submit" className="button-primary auth-button" disabled={loading}>
-            {loading ? 'Creating workspace...' : 'Create account'}
-          </button>
-        </form>
-        <div className="auth-links">
-          <Link href="/login">Already have an account?</Link>
+        <div className="auth-panel-body">
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <label>
+              Full name
+              <input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+            </label>
+            <label>
+              Workspace name
+              <input type="text" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} />
+            </label>
+            <label>
+              Work email
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            <label>
+              Password
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            </label>
+            {error ? <div className="auth-error">{error}</div> : null}
+            <button type="submit" className="button-primary auth-button" disabled={loading}>
+              {loading ? 'Creating workspace...' : 'Create account'}
+            </button>
+          </form>
+          <div className="auth-links">
+            <Link href="/login">Already have an account?</Link>
+          </div>
         </div>
       </div>
     </main>

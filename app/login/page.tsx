@@ -31,29 +31,33 @@ export default function LoginPage() {
   return (
     <main className="auth-shell">
       <div className="auth-panel">
-        <div className="auth-brand">
-          <span className="brand-mark">S</span>
-          <span>Signalroom</span>
+        <div className="auth-panel-header">
+          <div className="auth-brand">
+            <span className="brand-mark">S</span>
+            <span>Signalroom</span>
+          </div>
+          <h1>Welcome back</h1>
+          <p>Access your meeting intelligence workspace.</p>
         </div>
-        <h1>Welcome back</h1>
-        <p>Access your meeting intelligence workspace.</p>
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            Email
-            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
-          </label>
-          <label>
-            Password
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
-          </label>
-          {error ? <div className="auth-error">{error}</div> : null}
-          <button type="submit" className="button-primary auth-button" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-        <div className="auth-links">
-          <Link href="/forgot-password">Forgot password?</Link>
-          <Link href="/register">Create account</Link>
+        <div className="auth-panel-body">
+          <form onSubmit={handleSubmit} className="auth-form">
+            <label>
+              Email
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
+            </label>
+            <label>
+              Password
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
+            </label>
+            {error ? <div className="auth-error">{error}</div> : null}
+            <button type="submit" className="button-primary auth-button" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+          <div className="auth-links">
+            <Link href="/forgot-password">Forgot password?</Link>
+            <Link href="/register">Create account</Link>
+          </div>
         </div>
       </div>
     </main>
