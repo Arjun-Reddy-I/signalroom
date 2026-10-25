@@ -127,30 +127,48 @@ export function SearchOverlay({
             <EmptyState title="No matches" copy="Try a meeting title, decision, action item, or person name." />
           )}
           {!loading &&
-            hits.map((hit, i) => (
-              <button
-                key={i}
-                className="search-result"
-                onClick={() => {
-                  const match = data.meetings.find((m) => m.id === hit.meeting_id)
-                  if (match) {
-                    onOpenMeeting(match)
-                    onClose()
-                  } else {
-                    window.location.href = `/meetings/${hit.meeting_id}`
-                  }
-                }}
-              >
-                {contentIcon(hit.content_type)}
-                <span>
-                  <strong>{hit.meeting_title}</strong>
-                  <small>
-                    {hit.content_type.replace('_', ' ')} — {hit.text.slice(0, 80)}
-                    {hit.text.length > 80 ? '…' : ''}
-                  </small>
-                </span>
-              </button>
-            ))}
+            hits.length > 0 &&
+            (() => {
+              const groups = hits.reduce<Record<string, SearchHit[]>>((acc, hit) => {
+                const key = hit.content_type
+                if (!acc[key]) acc[key] = []
+                acc[key].push(hit)
+                return acc
+              }, {})
+              return Object.keys(groups).map((type) => (
+                <div key={type} className="search-group">
+                  <span className="search-group-label">
+                    {type === 'action_item'
+                      ? 'Action Items'
+                      : type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
+                  </span>
+                  {groups[type].map((hit, i) => (
+                    <button
+                      key={i}
+                      className="search-result"
+                      onClick={() => {
+                        const match = data.meetings.find((m) => m.id === hit.meeting_id)
+                        if (match) {
+                          onOpenMeeting(match)
+                          onClose()
+                        } else {
+                          window.location.href = `/meetings/${hit.meeting_id}`
+                        }
+                      }}
+                    >
+                      {contentIcon(hit.content_type)}
+                      <span>
+                        <strong>{hit.meeting_title}</strong>
+                        <small>
+                          {hit.content_type.replace('_', ' ')} — {hit.text.slice(0, 80)}
+                          {hit.text.length > 80 ? '…' : ''}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ))
+            })()}
         </div>
       </div>
     </div>

@@ -9,7 +9,7 @@ export function MeetingDialog({ meeting, onClose }: { meeting: Meeting; onClose:
       className="dialog-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="dialog meeting-dialog">
+      <div className="dialog meeting-dialog" role="dialog" aria-modal="true">
         <button className="dialog-close" onClick={onClose} aria-label="Close meeting">
           <X />
         </button>
