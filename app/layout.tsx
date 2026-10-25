@@ -1,6 +1,22 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { DM_Sans, DM_Serif_Display } from 'next/font/google'
 import './globals.css'
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+  preload: false,
+})
+
+const dmSerifDisplay = DM_Serif_Display({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif',
+  preload: false,
+})
 
 const themeScript = `
   (() => {
@@ -31,8 +47,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
+    <html lang="en" className={`${dmSans.variable} ${dmSerifDisplay.variable} antialiased`} suppressHydrationWarning>
+      <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
