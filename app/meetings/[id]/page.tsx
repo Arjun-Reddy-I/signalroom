@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronRight,
   Clock,
   Download,
   FileText,
@@ -344,188 +345,243 @@ export default function MeetingDetailPage() {
     meeting.summary?.provider === 'demo-fallback' ||
     meeting.transcript_segments.some((s) => s.text.startsWith('[DEMO'))
 
+  // Duration derived from scheduled_start and scheduled_end
+  const durationMs =
+    new Date(meeting.scheduled_end).getTime() - new Date(meeting.scheduled_start).getTime()
+  const durationMin = Math.round(durationMs / 60000)
+
   return (
     <div className="app-frame" style={{ minHeight: '100vh' }}>
-      <main className="main-content" style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
-        {/* Back nav */}
-        <button className="text-button" onClick={() => router.back()} style={{ marginBottom: '1.5rem' }}>
-          <ArrowLeft /> Back
-        </button>
+      <div className="meeting-detail-layout">
 
-        {/* Header */}
-        <div className="view-heading">
-          <div>
+        {/* ── Left outline column ───────────────────────────────────────── */}
+        <aside className="meeting-outline">
+          {/* Back button */}
+          <button className="text-button" onClick={() => router.back()} style={{ marginBottom: '1rem' }}>
+            <ArrowLeft /> Back
+          </button>
+
+          {/* Title */}
+          <h2 className="meeting-outline-title">
+            {meeting.title}
+          </h2>
+
+          {/* Status badge */}
+          <span className="status meeting-outline-status">
+            {meeting.status}
+          </span>
+
+          {/* Section anchor links */}
+          <nav className="outline-nav">
+            {meeting.summary && (
+              <a href="#summary" className="outline-link">Summary</a>
+            )}
+            {meeting.decisions.length > 0 && (
+              <a href="#decisions" className="outline-link">Decisions</a>
+            )}
+            {meeting.action_items.length > 0 && (
+              <a href="#action-items" className="outline-link">Action Items</a>
+            )}
+            {meeting.transcript_segments.length > 0 && (
+              <a href="#transcript" className="outline-link">Transcript</a>
+            )}
+            {showUpload && (
+              <a href="#upload" className="outline-link">Upload</a>
+            )}
+            <a href="#agenda" className="outline-link">Agenda</a>
+          </nav>
+
+          {/* Metadata */}
+          <div className="meeting-meta-grid">
+            <div className="meeting-meta-item">
+              <span className="eyebrow">Start</span>
+              <span>{new Date(meeting.scheduled_start).toLocaleString()}</span>
+            </div>
+            <div className="meeting-meta-item">
+              <span className="eyebrow">Mode</span>
+              <span>{meeting.mode}</span>
+            </div>
+            {durationMin > 0 && (
+              <div className="meeting-meta-item">
+                <span className="eyebrow">Duration</span>
+                <span>{durationMin} min</span>
+              </div>
+            )}
+            {meeting.participants.length > 0 && (
+              <div className="meeting-meta-item">
+                <span className="eyebrow">Participants</span>
+                <span>{meeting.participants.map((p) => p.name).join(', ')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* ICS download */}
+          <a
+            href={`/api/meetings/${meetingId}/calendar.ics`}
+            className="text-button meeting-outline-ics"
+            download
+          >
+            <Download /> Download ICS
+          </a>
+        </aside>
+
+        {/* ── Right content column ──────────────────────────────────────── */}
+        <main className="meeting-content">
+          {/* Breadcrumb */}
+          <div className="meeting-breadcrumb">
+            Meetings <ChevronRight size={13} /> <strong>{meeting.title}</strong>
+          </div>
+
+          {/* Page header */}
+          <div className="meeting-page-header">
             <span className="eyebrow">Meeting detail</span>
-            <h1>{meeting.title}</h1>
+            <h1 className="meeting-page-header">{meeting.title}</h1>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <span className={`status meeting-status`}>{meeting.status}</span>
-            <a
-              href={`/api/meetings/${meetingId}/calendar.ics`}
-              className="text-button"
-              download
-            >
-              <Download /> ICS
-            </a>
-          </div>
-        </div>
 
-        {/* Meta row */}
-        <div className="detail-grid" style={{ marginBottom: '2rem' }}>
-          <div>
-            <span className="eyebrow">Start</span>
-            <strong>{new Date(meeting.scheduled_start).toLocaleString()}</strong>
-          </div>
-          <div>
-            <span className="eyebrow">Mode</span>
-            <strong>{meeting.mode}</strong>
-          </div>
-          {meeting.participants.length > 0 && (
-            <div>
-              <span className="eyebrow">Participants</span>
-              <strong>{meeting.participants.map((p) => p.name).join(', ')}</strong>
+          {/* Demo callout */}
+          {isDemo && (
+            <div className="demo-callout" style={{ marginBottom: '1.5rem' }}>
+              <Sparkles size={16} />
+              <p style={{ margin: 0 }}>
+                <strong>Demo output</strong> — This transcript and analysis was generated by the fallback demo provider.
+                Configure <code>STT_PROVIDER=whisper</code> and <code>LLM_PROVIDER=ollama</code> for real AI analysis.
+              </p>
             </div>
           )}
-          {meeting.media_file && (
-            <div>
-              <span className="eyebrow">Recording</span>
-              <strong>{meeting.media_file.filename}</strong>
+
+          {/* Upload panel */}
+          {showUpload && (
+            <div id="upload">
+              <UploadPanel
+                meetingId={meetingId}
+                onComplete={() => {
+                  setLoading(true)
+                  void loadMeeting()
+                }}
+              />
             </div>
           )}
-        </div>
 
-        {isDemo && (
-          <div className="panel" style={{ background: 'var(--amber-bg, #2a1f00)', borderColor: 'var(--amber, #f59e0b)', marginBottom: '1.5rem' }}>
-            <p style={{ color: 'var(--amber, #f59e0b)', margin: 0 }}>
-              <strong>Demo output</strong> — This transcript and analysis was generated by the fallback demo provider.
-              Configure <code>STT_PROVIDER=whisper</code> and <code>LLM_PROVIDER=ollama</code> for real AI analysis.
-            </p>
-          </div>
-        )}
-
-        {/* Upload panel */}
-        {showUpload && (
-          <UploadPanel
-            meetingId={meetingId}
-            onComplete={() => {
-              setLoading(true)
-              void loadMeeting()
-            }}
-          />
-        )}
-
-        {/* Processing indicator */}
-        {isProcessing && (
-          <div className="panel" style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Processing indicator */}
+          {isProcessing && (
+            <div className="meeting-processing-bar">
               <Loader2 className="spin" />
               <span>Processing in progress — status: <strong>{meeting.status}</strong></span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Summary */}
-        {meeting.summary && (
-          <section className="panel" style={{ marginBottom: '1.5rem' }}>
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">AI summary</span>
-                <h2>Meeting summary</h2>
-              </div>
-              <Sparkles />
-            </div>
-            <p>{meeting.summary.summary_text}</p>
-            {keyPoints.length > 0 && (
-              <>
-                <span className="eyebrow">Key points</span>
-                <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
-                  {keyPoints.map((pt, i) => <li key={i}>{pt}</li>)}
-                </ul>
-              </>
-            )}
-          </section>
-        )}
-
-        {/* Decisions */}
-        {meeting.decisions.length > 0 && (
-          <section className="panel" style={{ marginBottom: '1.5rem' }}>
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">Decisions captured</span>
-                <h2>Decisions</h2>
-              </div>
-              <FileText />
-            </div>
-            {meeting.decisions.map((d) => (
-              <div key={d.id} className="task-row">
+          {/* Summary */}
+          {meeting.summary && (
+            <section id="summary" className="panel" style={{ marginBottom: '1.5rem' }}>
+              <div className="section-head">
                 <div>
-                  <strong>{d.title}</strong>
-                  {d.description && <small>{d.description}</small>}
+                  <span className="eyebrow">AI summary</span>
+                  <h2>Meeting summary</h2>
                 </div>
-                {d.category && <span className="priority medium">{d.category}</span>}
+                <Sparkles />
               </div>
-            ))}
-          </section>
-        )}
-
-        {/* Action items */}
-        {meeting.action_items.length > 0 && (
-          <section className="panel" style={{ marginBottom: '1.5rem' }}>
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">Follow-through</span>
-                <h2>Action items</h2>
-              </div>
-              <Check />
-            </div>
-            {meeting.action_items.map((a) => (
-              <div key={a.id} className={`task-row ${a.status === 'completed' ? 'task-done' : ''}`}>
-                <div>
-                  <strong>{a.title}</strong>
-                  {a.owner_name && <small>Owner: {a.owner_name}</small>}
+              <div className="meeting-summary-body">
+                <div className="ai-badge" style={{ marginBottom: '0.75rem' }}>
+                  <Sparkles size={12} /> AI Summary
                 </div>
-                {a.due_date && (
-                  <span>
-                    <Clock style={{ width: '0.875rem' }} />{' '}
-                    {new Date(a.due_date).toLocaleDateString()}
-                  </span>
+                <p className="meeting-summary-text">
+                  {meeting.summary.summary_text}
+                </p>
+                {keyPoints.length > 0 && (
+                  <>
+                    <span className="eyebrow">Key points</span>
+                    <ul className="key-points-list">
+                      {keyPoints.map((pt, i) => <li key={i}>{pt}</li>)}
+                    </ul>
+                  </>
                 )}
-                <span className={`priority ${a.priority}`}>{a.priority}</span>
-                <span className={`status ${a.status === 'completed' ? 'status-track' : 'status-review'}`}>
-                  {a.status}
-                </span>
               </div>
-            ))}
-          </section>
-        )}
+            </section>
+          )}
 
-        {/* Transcript */}
-        {meeting.transcript_segments.length > 0 && (
-          <section className="panel" style={{ marginBottom: '1.5rem' }}>
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">Full transcript</span>
-                <h2>Transcript</h2>
+          {/* Decisions */}
+          {meeting.decisions.length > 0 && (
+            <section id="decisions" className="panel" style={{ marginBottom: '1.5rem' }}>
+              <div className="section-head">
+                <div>
+                  <span className="eyebrow">Decisions captured</span>
+                  <h2>Decisions</h2>
+                </div>
+                <FileText />
               </div>
-              <Users />
-            </div>
-            <div className="transcript-list">
-              {meeting.transcript_segments.map((seg) => (
-                <div key={seg.id} className="transcript-segment">
-                  <div className="transcript-meta">
-                    <strong>{seg.speaker}</strong>
-                    <small>{formatTime(seg.start_time)} – {formatTime(seg.end_time)}</small>
+              <ol className="decisions-list">
+                {meeting.decisions.map((d) => (
+                  <li key={d.id} className="decision-item">
+                    <strong>{d.title}</strong>
+                    {d.description && <p className="decision-desc">{d.description}</p>}
+                    {d.category && <span className="category-chip">{d.category}</span>}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {/* Action items */}
+          {meeting.action_items.length > 0 && (
+            <section id="action-items" className="panel" style={{ marginBottom: '1.5rem' }}>
+              <div className="section-head">
+                <div>
+                  <span className="eyebrow">Follow-through</span>
+                  <h2>Action items</h2>
+                </div>
+                <Check />
+              </div>
+              {meeting.action_items.map((a) => (
+                <div key={a.id} className={`action-item-row ${a.status === 'completed' ? 'task-done' : ''}`}>
+                  <span className="task-check-indicator">
+                    {a.status === 'completed' ? <Check size={11} /> : null}
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <strong style={{ fontSize: '13px' }}>{a.title}</strong>
+                    {a.owner_name && <small style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{a.owner_name}</small>}
                   </div>
-                  <p>{seg.text}</p>
+                  {a.due_date ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--muted-foreground)' }}>
+                      <Clock style={{ width: '0.875rem' }} />
+                      {new Date(a.due_date).toLocaleDateString()}
+                    </span>
+                  ) : <span />}
+                  <span className={`priority ${a.priority}`}>{a.priority}</span>
                 </div>
               ))}
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {/* Agenda generation */}
-        <AgendaSection meetingId={meetingId} />
-      </main>
+          {/* Transcript */}
+          {meeting.transcript_segments.length > 0 && (
+            <section id="transcript" className="panel" style={{ marginBottom: '1.5rem' }}>
+              <div className="section-head">
+                <div>
+                  <span className="eyebrow">Full transcript</span>
+                  <h2>Transcript</h2>
+                </div>
+                <Users />
+              </div>
+              <div className="transcript-list">
+                {meeting.transcript_segments.map((seg) => (
+                  <div key={seg.id} className="transcript-segment">
+                    <div className="transcript-meta">
+                      <strong className="transcript-speaker">{seg.speaker}</strong>
+                      <small className="transcript-time">{formatTime(seg.start_time)} – {formatTime(seg.end_time)}</small>
+                    </div>
+                    <p style={{ lineHeight: '1.7' }}>{seg.text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Agenda section */}
+          <div id="agenda">
+            <AgendaSection meetingId={meetingId} />
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
