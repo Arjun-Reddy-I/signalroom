@@ -65,7 +65,6 @@ export function ArchiveView() {
               key={m.id}
               href={`/meetings/${m.id}`}
               className="task-row"
-              style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
             >
               <div>
                 <strong>{m.title}</strong>

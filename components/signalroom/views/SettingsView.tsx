@@ -176,7 +176,7 @@ export function SettingsView() {
             </div>
             <Shield />
           </div>
-          <form onSubmit={(e) => void handlePasswordChange(e)} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          <form onSubmit={(e) => void handlePasswordChange(e)} className="settings-form">
             <label>
               Current password
               <input
@@ -218,7 +218,7 @@ export function SettingsView() {
 
           <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
             <span className="eyebrow" style={{ display: 'block', marginBottom: '0.75rem' }}>Session</span>
-            <button className="button-quiet" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
+            <button className="button-quiet button-danger" onClick={handleLogout}>
               Sign out
             </button>
           </div>

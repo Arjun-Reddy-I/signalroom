@@ -72,7 +72,7 @@ export function TeamView() {
                 <h2>{me.organization.name}</h2>
               </div>
             </div>
-            <p className="muted-text" style={{ fontSize: '0.875rem' }}>
+            <p className="muted-text">
               Slug: <code>{me.organization.slug}</code>
             </p>
 
@@ -92,7 +92,7 @@ export function TeamView() {
               </div>
             </div>
 
-            <p className="muted-text" style={{ marginTop: '1.5rem', fontSize: '0.8125rem' }}>
+            <p className="muted-text" style={{ marginTop: '1.5rem' }}>
               Full member listing requires a dedicated memberships API endpoint.
               Your account details are shown above. Use the Settings view to manage
               your profile or invite team members.
@@ -117,7 +117,7 @@ export function TeamView() {
                   {role.slice(0, 2).toUpperCase()}
                 </span>
                 <div>
-                  <strong style={{ textTransform: 'capitalize' }}>{role}</strong>
+                  <strong className="role-name">{role}</strong>
                   <small>{desc}</small>
                 </div>
                 {me.role === role && (

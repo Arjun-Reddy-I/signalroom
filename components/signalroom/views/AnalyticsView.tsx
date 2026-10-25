@@ -103,7 +103,7 @@ export function AnalyticsView() {
             />
           </div>
 
-          <div className="content-grid" style={{ marginTop: '2rem' }}>
+          <div className="content-grid analytics-grid">
             <section className="panel">
               <div className="section-head">
                 <div>
@@ -114,7 +114,7 @@ export function AnalyticsView() {
               </div>
               <p className="stat-value">{completionRate}%</p>
               <SimpleBar pct={completionRate} />
-              <p className="stat-detail" style={{ marginTop: '0.5rem' }}>
+              <p className="stat-detail">
                 {agg.completed_meetings} of {agg.total_meetings} meetings fully processed
               </p>
             </section>
@@ -131,7 +131,7 @@ export function AnalyticsView() {
                 {100 - overdueRate}%
               </p>
               <SimpleBar pct={100 - overdueRate} />
-              <p className="stat-detail" style={{ marginTop: '0.5rem' }}>
+              <p className="stat-detail">
                 {agg.open_action_items - agg.overdue_action_items} on-track /{' '}
                 {agg.overdue_action_items} overdue
               </p>
