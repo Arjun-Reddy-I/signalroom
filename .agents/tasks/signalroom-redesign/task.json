@@ -1,0 +1,7 @@
+{
+  "task_id": "task-signalroom-redesign",
+  "task_description": "Comprehensive UI/UX redesign of the SignalRoom frontend to look and feel like a polished, premium SaaS product. Inspired by Linear (app shell), Granola (meeting content), and Fellow (follow-up workflows). No backend, API, auth logic, or deployment config changes. All behavior preserved.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

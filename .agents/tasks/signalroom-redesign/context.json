@@ -1,0 +1,43 @@
+{
+  "project_type": "Next.js 16 App Router SPA with a FastAPI backend (backend is off-limits)",
+  "language": "TypeScript + TSX",
+  "build_system": "pnpm + Next.js 16.3.3. Tailwind CSS v4 via @tailwindcss/postcss. No separate tailwind.config.ts — Tailwind is configured entirely via @theme inline in globals.css. The app uses `@import 'tailwindcss'` and `@import 'tw-animate-css'` at the top of globals.css.",
+  "test_framework": "None — no test framework is configured. Verification is TypeScript check + build.",
+  "build_command": "pnpm build",
+  "test_command": "pnpm exec tsc --noEmit",
+  "verification_instructions": "1. Run `pnpm exec tsc --noEmit` from e:\\Final_Year_Project — must exit 0 with no errors. 2. Run `pnpm build` from e:\\Final_Year_Project — must exit 0. These are the ONLY verification commands.",
+  "snapshot_or_generated_files": "null — no checked-in build artifacts.",
+  "environment_constraints": "Do NOT modify: next.config.mjs, package.json, docker-compose.yml, Dockerfile. Do NOT add new npm packages. All CSS must live in app/globals.css — no new CSS files. Only modify files under app/, components/, lib/, services/, types/.",
+  "contribution_requirements": "This is Next.js 16 (not 13/14/15). The App Router is used. layout.tsx uses `suppressHydrationWarning` on <html> due to the theme script. The theme is controlled via `data-theme` attribute on <html> set by an inline script in layout.tsx. Font loading must use `next/font/google` with CSS variable method (variable option) — NOT @import or <link> tags.",
+  "key_patterns": "1. All CSS classes are in app/globals.css as plain CSS (no Tailwind utility classes in JSX files, except `antialiased`). 2. CSS class names are used as string literals in TSX — `getMeetingStatusTone()`, `projectStatusTone()`, `initialsTone()` in types/signalroom.ts return CSS class name strings. These must be preserved. 3. All views are rendered inside workspace-shell.tsx's AppShell component. The meeting detail page is a separate route at /meetings/[id]/page.tsx and does NOT use the AppShell. 4. Theme toggle is a standalone component in components/signalroom/theme-toggle.tsx. 5. The globals.css currently has TWO :root blocks and TWO @theme inline blocks — this MUST be merged. 6. The `--font-sans` and `--font-serif` CSS variables in @theme inline currently reference 'DM Sans' and 'DM Serif Display' but these fonts are never actually loaded. 7. The sidebar is currently 248px wide in CSS but the design calls for 220px. 8. The app-content margin-left must match the sidebar width. 9. ViewName type in types/signalroom.ts includes 'Search' — but the plan removes Search from the sidebar groups (it is triggered via keyboard shortcut). The ViewName type and slugViews/viewSlugs must NOT be changed (they are part of the URL routing logic).",
+  "key_files_programmatic_class_names": [
+    "types/signalroom.ts — getMeetingStatusTone() returns: meeting-ready, meeting-processing, meeting-recording, meeting-scheduled",
+    "types/signalroom.ts — projectStatusTone() returns: status-risk, status-review, status-track",
+    "types/signalroom.ts — initialsTone() returns: avatar-blue, avatar-coral, avatar-green, avatar-amber",
+    "components/signalroom/workspace-shell.tsx — isActionDone() drives class: task-done",
+    "components/signalroom/workspace-shell.tsx — item.priority.toLowerCase() drives class: priority high/medium/low",
+    "app/meetings/[id]/page.tsx — meeting.status drives class: meeting-status (in className string)"
+  ],
+  "relevant_files": [
+    "app/globals.css",
+    "app/layout.tsx",
+    "app/page.tsx",
+    "app/login/page.tsx",
+    "app/register/page.tsx",
+    "app/meetings/[id]/page.tsx",
+    "components/signalroom/workspace-shell.tsx",
+    "components/signalroom/views/AnalyticsView.tsx",
+    "components/signalroom/views/CalendarView.tsx",
+    "components/signalroom/views/TeamView.tsx",
+    "components/signalroom/views/SettingsView.tsx",
+    "components/signalroom/views/ArchiveView.tsx",
+    "components/signalroom/SearchOverlay.tsx",
+    "components/signalroom/dialogs/MeetingDialog.tsx",
+    "components/signalroom/dialogs/ProjectDialog.tsx",
+    "components/signalroom/theme-toggle.tsx",
+    "types/signalroom.ts",
+    "lib/theme.ts",
+    "lib/config.ts"
+  ],
+  "directory_structure": "e:\\Final_Year_Project\\ — app/ (Next.js App Router pages + globals.css + layout.tsx), components/signalroom/ (all UI components — workspace-shell.tsx is the SPA shell, views/ contains 5 view components, dialogs/ has 2 dialogs), lib/ (api/client.ts, api/auth.ts, api/workspace.ts, theme.ts, config.ts), services/ (dashboard.ts — API data fetching), types/ (signalroom.ts — all shared types and utility functions), data/mock/ (dashboard.ts — demo data)"
+}
