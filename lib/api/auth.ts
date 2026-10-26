@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api/client'
-import { isDemoModeEnabled } from '@/lib/config'
+import { API_BASE_URL, isDemoModeEnabled } from '@/lib/config'
 
 export type AuthTokenResponse = {
   access_token: string
@@ -73,9 +73,19 @@ export async function loginWithEmail(email: string, password: string): Promise<A
   }
 }
 
-export function logoutSession(): void {
+export async function logoutSession(): Promise<void> {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem('signalroom-access-token')
-  window.localStorage.removeItem('signalroom-refresh-token')
-  window.localStorage.removeItem('signalroom-user')
+  const refreshToken = window.localStorage.getItem('signalroom-refresh-token')
+  try {
+    await fetch(
+      `${API_BASE_URL}/auth/logout${refreshToken ? `?refresh_token=${encodeURIComponent(refreshToken)}` : ''}`,
+      { method: 'POST', credentials: 'include' },
+    )
+  } catch {
+    // Local state must still be cleared when the API is unavailable.
+  } finally {
+    window.localStorage.removeItem('signalroom-access-token')
+    window.localStorage.removeItem('signalroom-refresh-token')
+    window.localStorage.removeItem('signalroom-user')
+  }
 }
