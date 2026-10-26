@@ -206,7 +206,6 @@ async def logout(
     response: Response,
     request: Request,
     refresh_token: str | None = None,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     raw_rt = refresh_token or request.cookies.get("refresh_token")

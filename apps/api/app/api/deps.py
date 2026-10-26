@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 
 from fastapi import Cookie, Depends, Header, Request
@@ -15,6 +16,7 @@ from app.db.session import AsyncSessionLocal
 from app.models import Membership, Organization, RoleEnum, User
 
 security_bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -54,7 +56,8 @@ async def get_current_user(
         if not isinstance(user_id, str) or not user_id:
             raise UnauthorizedException(message="Invalid token payload")
     except Exception as e:
-        raise UnauthorizedException(message=f"Invalid or expired access token: {e!s}")
+        logger.info("Access token rejected: %s", type(e).__name__)
+        raise UnauthorizedException(message="Invalid or expired access token")
 
     res = await db.execute(select(User).where(User.id == user_id, User.is_active))
     user = res.scalars().first()

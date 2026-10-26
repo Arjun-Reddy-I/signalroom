@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import settings
-from app.db.vector_store import get_chroma_client
+from app.db.vector_store import get_chroma_client, vector_store_error
 from app.schemas.common import HealthCheckResponse
 
 router = APIRouter(tags=["Health Check"])
@@ -35,8 +35,8 @@ async def health_ready(db: AsyncSession = Depends(get_db)) -> HealthCheckRespons
     try:
         client = get_chroma_client()
         client.heartbeat()
-    except Exception as e:
-        chroma_status = f"error: {e!s}"
+    except BaseException:
+        chroma_status = vector_store_error() or "error: vector store unavailable"
 
     overall_status = "ok" if (db_status == "connected" and chroma_status == "connected") else "degraded"
 

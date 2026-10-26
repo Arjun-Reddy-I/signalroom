@@ -1,13 +1,16 @@
+from pathlib import Path
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+API_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_SECRET = "signalroom-secret-key-change-this-in-production-32bytes!"
 _DEFAULT_ENCRYPTION = "gAAAAABlX1kZ-9X8vR3X5Z1V9X8vR3X5Z1V9X8vR3X4="
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=API_ROOT / ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
@@ -31,7 +34,25 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "ENCRYPTION_KEY must be changed from the default value in production."
                 )
+        self.DATABASE_URL = self._resolve_sqlite_url(self.DATABASE_URL)
+        self.UPLOAD_DIR = self._resolve_path(self.UPLOAD_DIR)
+        self.CHROMA_PERSIST_DIR = self._resolve_path(self.CHROMA_PERSIST_DIR)
         return self
+
+    @staticmethod
+    def _resolve_path(value: str) -> str:
+        path = Path(value)
+        return str(path if path.is_absolute() else API_ROOT / path)
+
+    @staticmethod
+    def _resolve_sqlite_url(value: str) -> str:
+        prefix = "sqlite+aiosqlite:///"
+        if not value.startswith(prefix):
+            return value
+        path = Path(value[len(prefix):])
+        if not path.is_absolute():
+            path = API_ROOT / path
+        return f"{prefix}{path.resolve().as_posix()}"
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./signalroom.db"

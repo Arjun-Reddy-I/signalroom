@@ -80,9 +80,9 @@ async def search_workspace(
                         "segment_id": meta.get("segment_id", ""),
                     },
                 ))
-    except Exception as vec_err:
+    except BaseException as vec_err:
         # Vector search failed (e.g. no embeddings indexed yet) — fall through to SQL
-        logger.info(f"Vector search unavailable ({vec_err}), using SQL full-text search")
+        logger.warning("Vector search unavailable (%s), using SQL full-text search", type(vec_err).__name__)
 
     # ── 2. SQL full-text search (always runs to supplement / fill gaps) ────
     q_like = f"%{q}%"
