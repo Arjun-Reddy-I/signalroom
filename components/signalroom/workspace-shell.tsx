@@ -14,6 +14,7 @@ import { CalendarView } from '@/components/signalroom/views/CalendarView'
 import { SettingsView } from '@/components/signalroom/views/SettingsView'
 import { TeamView } from '@/components/signalroom/views/TeamView'
 import { createProjectRequest, updateActionItemRequest } from '@/lib/api/workspace'
+import { layoutTransition } from '@/lib/motion'
 import { formatDateLong, getDateRangeLabel, getGreeting, getMeetingStatusTone, getStatusLabel, initialsTone, isActionDone, projectStatusTone, type DashboardData, type Meeting, type NewProjectInput, type Project, type ToastState, type ViewName } from '@/types/signalroom'
 
 // Grouped sidebar navigation — Search is intentionally excluded (triggered via Ctrl+K / topbar button)
@@ -91,6 +92,7 @@ function Sidebar({ active, onChange, open, onClose, userName, userInitials }: {
                   className={`nav-item ${active === label ? 'nav-active' : ''}`}
                   onClick={() => { onChange(label); onClose() }}
                 >
+                  {active === label && <motion.span layoutId="sidebar-active" className="nav-active-indicator" transition={layoutTransition} />}
                   <Icon /><span>{label}</span>
                 </button>
               ))}
@@ -301,18 +303,20 @@ function ActionItemsView({ data, onToggle }: { data: DashboardData; onToggle: (i
           ))}
         </div>
         <div className="table-head"><span>Task</span><span>Owner</span><span>Due</span><span>Status</span></div>
+        <AnimatePresence initial={false} mode="popLayout">
         {filtered.map((item) => {
           const isOverdue = item.dueDate ? new Date(item.dueDate) < today && item.status !== 'Done' : false
           return (
-            <div className={`task-row ${isActionDone(item) ? 'task-done' : ''} ${isOverdue ? 'task-overdue' : ''}`} key={item.id}>
+            <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -12 }} transition={layoutTransition} className={`task-row ${isActionDone(item) ? 'task-done' : ''} ${isOverdue ? 'task-overdue' : ''}`} key={item.id}>
               <button className="task-check" aria-label={`Mark ${item.title} complete`} onClick={() => onToggle(item.id, isActionDone(item))}>{isActionDone(item) && <Check />}</button>
               <div><strong>{item.title}</strong><small>{item.source} / {item.project}</small></div>
               <span>{item.owner}</span>
               <span>{item.dueDate ? formatDateLong(item.dueDate) : 'No due date'}</span>
               <span className={`priority ${item.priority.toLowerCase()}`}>{item.status}</span>
-            </div>
+            </motion.div>
           )
         })}
+        </AnimatePresence>
         {filtered.length === 0 && <EmptyState title="No action items" copy="Follow-up work extracted from meetings will appear here." />}
       </Panel>
     </ViewFrame>
@@ -477,7 +481,11 @@ export function AppShell({ data }: { data: DashboardData }) {
           onNotify={() => notify('Notifications are connected to the workspace API.')}
         />
         <main className="main-content">
-          {renderView()}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={active} className="view-transition" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={layoutTransition}>
+              {renderView()}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
       <AnimatePresence>

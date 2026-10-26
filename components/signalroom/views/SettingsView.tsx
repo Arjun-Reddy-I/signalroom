@@ -85,8 +85,8 @@ export function SettingsView() {
     }
   }
 
-  function handleLogout() {
-    logoutSession()
+  async function handleLogout() {
+    await logoutSession()
     router.push('/login')
   }
 
@@ -218,7 +218,7 @@ export function SettingsView() {
 
           <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
             <span className="eyebrow" style={{ display: 'block', marginBottom: '0.75rem' }}>Session</span>
-            <button className="button-quiet button-danger" onClick={handleLogout}>
+            <button className="button-quiet button-danger" onClick={() => void handleLogout()}>
               Sign out
             </button>
           </div>

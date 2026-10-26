@@ -43,11 +43,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="auth-form">
             <label>
               Email
-              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" />
+              <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
             </label>
             <label>
               Password
-              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
+              <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
             </label>
             {error ? <div className="auth-error">{error}</div> : null}
             <button type="submit" className="button-primary auth-button" disabled={loading}>

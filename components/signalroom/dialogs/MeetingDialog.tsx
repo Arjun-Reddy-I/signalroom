@@ -1,7 +1,9 @@
 'use client'
 
 import { X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { type Meeting, formatDateLong, getMeetingStatusTone } from '@/types/signalroom'
+import { layoutTransition } from '@/lib/motion'
 
 export function MeetingDialog({ meeting, onClose }: { meeting: Meeting; onClose: () => void }) {
   return (
@@ -9,7 +11,15 @@ export function MeetingDialog({ meeting, onClose }: { meeting: Meeting; onClose:
       className="dialog-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="dialog meeting-dialog" role="dialog" aria-modal="true">
+      <motion.div
+        className="dialog meeting-dialog"
+        role="dialog"
+        aria-modal="true"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={layoutTransition}
+      >
         <button className="dialog-close" onClick={onClose} aria-label="Close meeting">
           <X />
         </button>
@@ -55,7 +65,7 @@ export function MeetingDialog({ meeting, onClose }: { meeting: Meeting; onClose:
         >
           Open meeting detail
         </a>
-      </div>
+      </motion.div>
     </div>
   )
 }

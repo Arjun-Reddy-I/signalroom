@@ -64,19 +64,19 @@ export default function RegisterPage() {
           <form className="auth-form" onSubmit={handleSubmit}>
             <label>
               Full name
-              <input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+              <input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} required />
             </label>
             <label>
               Workspace name
-              <input type="text" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} />
+              <input type="text" value={organizationName} onChange={(event) => setOrganizationName(event.target.value)} required />
             </label>
             <label>
               Work email
-              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             </label>
             <label>
               Password
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required />
             </label>
             {error ? <div className="auth-error">{error}</div> : null}
             <button type="submit" className="button-primary auth-button" disabled={loading}>

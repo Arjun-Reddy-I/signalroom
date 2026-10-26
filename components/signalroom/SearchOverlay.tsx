@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { CalendarDays, Check, FileText, Search, Sparkles } from 'lucide-react'
 import { type DashboardData, type Meeting, formatDateLong, isActionDone } from '@/types/signalroom'
 import { apiFetch } from '@/lib/api/client'
@@ -37,48 +38,36 @@ export function SearchOverlay({
   const [hits, setHits] = useState<SearchHit[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   async function handleSearch(q: string) {
     setQuery(q)
     if (q.trim().length < 2) {
       setHits([])
       setSearched(false)
+      setError('')
       return
     }
     setLoading(true)
+    setError('')
     try {
       const res = await apiFetch<{ hits: SearchHit[]; total: number }>(
         `/search?q=${encodeURIComponent(q)}&limit=15`,
       )
       setHits(res.hits)
       setSearched(true)
-    } catch {
-      // Fall back to local data search
-      const normalized = q.toLowerCase()
-      const localHits: SearchHit[] = [
-        ...data.meetings
-          .filter((m) => `${m.title} ${m.project} ${m.summary}`.toLowerCase().includes(normalized))
-          .map((m) => ({
-            meeting_id: m.id,
-            meeting_title: m.title,
-            content_type: 'meeting',
-            text: m.summary,
-            score: 0.8,
-            metadata: {},
-          })),
-        ...data.actionItems
-          .filter((a) => `${a.title} ${a.owner}`.toLowerCase().includes(normalized))
-          .map((a) => ({
-            meeting_id: a.source,
-            meeting_title: a.source,
-            content_type: 'action_item',
-            text: a.title,
-            score: 0.7,
-            metadata: { owner: a.owner, status: a.status },
-          })),
-      ]
-      setHits(localHits)
+    } catch (err: unknown) {
+      setHits([])
       setSearched(true)
+      setError(err instanceof Error ? err.message : 'Search is unavailable. Try again.')
     } finally {
       setLoading(false)
     }
@@ -95,11 +84,15 @@ export function SearchOverlay({
   }
 
   return (
-    <div
+    <motion.div
       className="search-layer"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="search-dialog">
+      <motion.div className="search-dialog" initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.99 }} transition={{ duration: 0.24 }}>
         <div className="search-input-wrap">
           <Search />
           <input
@@ -123,7 +116,14 @@ export function SearchOverlay({
               <span>Search meeting transcripts, summaries, decisions, and tasks</span>
             </div>
           )}
-          {!loading && searched && hits.length === 0 && (
+          {!loading && error && (
+            <div className="search-error" role="alert">
+              <strong>Search unavailable</strong>
+              <span>{error}</span>
+              <button className="button-quiet" onClick={() => void handleSearch(query)}>Retry</button>
+            </div>
+          )}
+          {!loading && searched && !error && hits.length === 0 && (
             <EmptyState title="No matches" copy="Try a meeting title, decision, action item, or person name." />
           )}
           {!loading &&
@@ -170,7 +170,7 @@ export function SearchOverlay({
               ))
             })()}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
