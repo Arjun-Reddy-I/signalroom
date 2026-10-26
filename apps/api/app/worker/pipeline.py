@@ -301,7 +301,7 @@ async def _execute_pipeline(session, job: ProcessingJob) -> None:  # type: ignor
             logger.info(f"Indexed {len(ids_to_add)} embeddings for meeting {meeting.id}")
 
         await session.flush()
-    except Exception as embed_err:
+    except BaseException as embed_err:
         logger.warning(f"Vector embedding step failed (non-fatal, pipeline continues): {embed_err}")
 
     # ── Stage 7: REMINDERS ───────────────────────────────────────────────────
