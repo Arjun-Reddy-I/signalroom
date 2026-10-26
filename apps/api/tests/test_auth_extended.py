@@ -183,3 +183,50 @@ async def test_refresh_token_rotation():
             old_tok = res_tok.scalars().first()
             assert old_tok is not None
             assert old_tok.revoked is True, "Old refresh token should be marked revoked"
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_refresh_session_and_clears_cookie_auth():
+    transport = ASGITransport(app=app)
+    uid = str(uuid.uuid4())[:8]
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        registered = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"logout_user_{uid}@test.com",
+                "password": "Logout123!",
+                "full_name": "Logout Test",
+                "organization_name": f"Logout Org {uid}",
+            },
+        )
+        assert registered.status_code == 201
+        refresh_token = registered.json()["refresh_token"]
+
+        logged_out = await client.post(
+            "/api/v1/auth/logout",
+            params={"refresh_token": refresh_token},
+        )
+        assert logged_out.status_code == 200
+        assert (await client.get("/api/v1/auth/me")).status_code == 401
+        assert (
+            await client.post(
+                "/api/v1/auth/refresh",
+                params={"refresh_token": refresh_token},
+            )
+        ).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_malformed_access_token_has_generic_public_error():
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": "Bearer malformed-token"},
+        )
+
+    assert response.status_code == 401
+    assert "Not enough segments" not in response.text
+    assert response.json()["message"] == "Invalid or expired access token"
